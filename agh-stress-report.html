@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AdGuard Home stress test — GL-MT3600BE</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font-sans, ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif);
+    color: var(--foreground, #111);
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { padding: 2px 0 6px; }
+  h1 { font-size: 21px; line-height: 1.25; letter-spacing: -0.02em; margin: 0 0 6px; font-weight: 650; }
+  .sub { color: var(--muted-foreground, #666); font-size: 12.5px; line-height: 1.5; }
+  .sub code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0 4px; }
+  .stat {
+    border: 1px solid var(--border, #e5e5e5);
+    border-radius: 10px;
+    padding: 11px 13px 12px;
+    background: var(--card, transparent);
+  }
+  .stat .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted-foreground, #666); font-weight: 600; }
+  .stat .v { font-size: 21px; font-weight: 650; margin-top: 5px; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .stat .u { font-size: 11.5px; color: var(--muted-foreground, #666); margin-top: 2px; line-height: 1.35; }
+
+  h2 {
+    font-size: 11px; text-transform: uppercase; letter-spacing: .085em;
+    color: var(--muted-foreground, #666); margin: 28px 0 10px; font-weight: 650;
+  }
+  p { margin: 0 0 10px; font-size: 13.5px; line-height: 1.6; }
+  p.note { color: var(--muted-foreground, #666); font-size: 12.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  th, td { padding: 7px 8px; border-bottom: 1px solid var(--border, #e5e5e5); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child { text-align: left; white-space: normal; }
+  th { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-foreground, #666); font-weight: 600; }
+  tr.hi td { background: var(--secondary, rgba(0,0,0,.035)); font-weight: 600; }
+  tr.cap td { color: var(--destructive, #b42318); }
+  tr.chain td { color: var(--muted-foreground, #555); }
+  td .tag { font-size: 10px; padding: 1px 5px; border-radius: 4px; background: var(--secondary, #eee); color: var(--muted-foreground, #555); margin-left: 6px; vertical-align: 1px; }
+
+  .chart { margin: 2px 0 0; overflow-x: auto; }
+  .chart svg { min-width: 520px; }
+  .tablewrap { overflow-x: auto; }
+  .legend { display: flex; gap: 16px; font-size: 11.5px; color: var(--muted-foreground, #666); margin: 6px 0 0 4px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 5px; vertical-align: 0; }
+  svg text { font-family: var(--font-sans, sans-serif); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .panel { border: 1px solid var(--border, #e5e5e5); border-radius: 10px; padding: 13px 15px; }
+  .panel h3 { font-size: 12px; margin: 0 0 8px; font-weight: 650; letter-spacing: -0.01em; }
+  .panel p { font-size: 12.5px; margin: 0 0 7px; line-height: 1.55; }
+  .panel p:last-child { margin-bottom: 0; }
+  .kpi { font-variant-numeric: tabular-nums; font-weight: 650; }
+
+  ul { margin: 0; padding-left: 17px; }
+  li { font-size: 13px; line-height: 1.6; margin-bottom: 7px; }
+  li:last-child { margin-bottom: 0; }
+  li code { font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; background: var(--code-background, rgba(0,0,0,.05)); padding: 1px 4px; border-radius: 4px; }
+  .warn li::marker { color: var(--warning, #b54708); }
+
+  .foot { margin-top: 26px; padding-top: 12px; border-top: 1px solid var(--border, #e5e5e5); color: var(--muted-foreground, #666); font-size: 11.5px; line-height: 1.6; }
+
+  @media (max-width: 620px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .grid2 { grid-template-columns: 1fr; }
+    th, td { padding: 6px 4px; font-size: 11.5px; }
+    th:first-child, td:first-child { max-width: 130px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>AdGuard Home on the Beryl 7 — capacity and blocking, measured</h1>
+  <div class="sub">
+    GL-MT3600BE · OpenWrt 21.02-SNAPSHOT · AGH 0.107.73 · 4× Cortex-A53 · 480 MB RAM<br>
+    Your <code>raspi_stuff/AdGuardHome.yaml</code> applied, then loaded from a machine on the same L2 (10.37.0.40).
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="k">Sustained</div>
+      <div class="v">4.7k</div>
+      <div class="u">queries/s answered, cached, ~4% dropped</div>
+    </div>
+    <div class="stat">
+      <div class="k">Hard ceiling</div>
+      <div class="v">~5.5k</div>
+      <div class="u">queries/s, then it drops instead of queueing</div>
+    </div>
+    <div class="stat">
+      <div class="k">Single client cap</div>
+      <div class="v">50</div>
+      <div class="u">q/s — your ratelimit, per /32, silent</div>
+    </div>
+    <div class="stat">
+      <div class="k">Household need</div>
+      <div class="v">~10–50</div>
+      <div class="u">q/s at peak → roughly 100× headroom</div>
+    </div>
+  </div>
+
+  <h2>Offered vs. answered</h2>
+  <div class="chart">
+    <svg viewBox="0 0 720 250" width="100%" height="250" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Offered versus answered queries per second, log scale">
+      <!-- gridlines -->
+      <g stroke="var(--border, #e5e5e5)" stroke-width="1">
+        <line x1="66" y1="212" x2="706" y2="212"/>
+        <line x1="66" y1="169" x2="706" y2="169" stroke-dasharray="2 4"/>
+        <line x1="66" y1="120" x2="706" y2="120" stroke-dasharray="2 4"/>
+        <line x1="66" y1="71"  x2="706" y2="71"  stroke-dasharray="2 4"/>
+        <line x1="66" y1="22"  x2="706" y2="22"  stroke-dasharray="2 4"/>
+      </g>
+      <g fill="var(--muted-foreground, #666)" font-size="10" text-anchor="end">
+        <text x="58" y="215">10</text>
+        <text x="58" y="172">100</text>
+        <text x="58" y="123">1k</text>
+        <text x="58" y="74">10k</text>
+      </g>
+      <text x="66" y="14" fill="var(--muted-foreground, #666)" font-size="10">queries / second (log)</text>
+
+      <!-- slot 1: 30 / 30 -->
+      <rect x="95"  y="182" width="40" height="30"  fill="var(--muted-foreground, #999)" opacity=".35" rx="2"/>
+      <rect x="141" y="182" width="40" height="30"  fill="var(--chart-1, #2563eb)" rx="2"/>
+      <!-- slot 2: 800 / 49 -->
+      <rect x="220" y="91"  width="40" height="121" fill="var(--muted-foreground, #999)" opacity=".35" rx="2"/>
+      <rect x="266" y="168" width="40" height="44"  fill="var(--chart-1, #2563eb)" rx="2"/>
+      <!-- slot 3: 2000 / 1970 -->
+      <rect x="345" y="66"  width="40" height="146" fill="var(--muted-foreground, #999)" opacity=".35" rx="2"/>
+      <rect x="391" y="66"  width="40" height="146" fill="var(--chart-1, #2563eb)" rx="2"/>
+      <!-- slot 4: 5000 / 4742 -->
+      <rect x="470" y="42"  width="40" height="170" fill="var(--muted-foreground, #999)" opacity=".35" rx="2"/>
+      <rect x="516" y="42"  width="40" height="170" fill="var(--chart-1, #2563eb)" rx="2"/>
+      <!-- slot 5: 11000 / 5516 -->
+      <rect x="595" y="19"  width="40" height="193" fill="var(--muted-foreground, #999)" opacity=".35" rx="2"/>
+      <rect x="641" y="38"  width="40" height="174" fill="var(--chart-1, #2563eb)" rx="2"/>
+
+      <!-- value labels -->
+      <g fill="var(--muted-foreground, #666)" font-size="10.5" text-anchor="middle">
+        <text x="115" y="176">30</text><text x="161" y="176">30</text>
+        <text x="240" y="85">800</text><text x="286" y="162">49</text>
+        <text x="365" y="60">2 000</text><text x="411" y="60">1 970</text>
+        <text x="490" y="36">5 000</text><text x="536" y="36">4 742</text>
+        <text x="615" y="13">11 000</text><text x="661" y="32">5 516</text>
+      </g>
+
+      <!-- x labels -->
+      <g fill="var(--foreground, #111)" font-size="11" text-anchor="middle">
+        <text x="138" y="230">baseline</text>
+        <text x="263" y="230">config as written</text>
+        <text x="388" y="230">2k offered</text>
+        <text x="513" y="230">5k offered</text>
+        <text x="638" y="230">overload</text>
+      </g>
+    </svg>
+    <div class="legend">
+      <span><i style="background:var(--muted-foreground,#999);opacity:.35"></i>offered</span>
+      <span><i style="background:var(--chart-1,#2563eb)"></i>answered</span>
+    </div>
+  </div>
+
+  <h2>Every run</h2>
+  <div class="tablewrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Test</th><th>Offered</th><th>Answered</th><th>Dropped</th><th>p50</th><th>p99</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Idle baseline, one client</td><td>30/s</td><td>30/s</td><td>0%</td><td>1.2 ms</td><td>2.0 ms</td></tr>
+      <tr class="cap"><td>Ratelimit as configured <span class="tag">/32 · 50</span></td><td>800/s</td><td>49/s</td><td>93.8%</td><td>0.9 ms</td><td>11 ms</td></tr>
+      <tr><td>Cached, 2k offered</td><td>2 000/s</td><td>1 970/s</td><td>0.02%</td><td>1.0 ms</td><td>12 ms</td></tr>
+      <tr class="hi"><td>Cached, 5k offered</td><td>5 000/s</td><td>4 742/s</td><td>3.7%</td><td>2.0 ms</td><td>139 ms</td></tr>
+      <tr><td>Cached, 2× overload</td><td>11 000/s</td><td>5 516/s</td><td>50%</td><td>47 ms</td><td>186 ms</td></tr>
+      <tr class="chain"><td>Same 5k through dnsmasq :53 <span class="tag">real LAN path</span></td><td>5 000/s</td><td>4 917/s</td><td>0.19%</td><td>0.4 ms</td><td>2.0 ms</td></tr>
+      <tr><td>Uncached, DoH upstream</td><td>200/s</td><td>197/s</td><td>0.2%</td><td>10.6 ms</td><td>238 ms</td></tr>
+      <tr><td>Uncached, DoH upstream</td><td>500/s</td><td>475/s</td><td>3.1%</td><td>11 ms</td><td>1.7 s</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="note" style="margin-top:8px">
+    The 50/s row is the ratelimit, not the hardware. The 5k row is where CPU starts to matter. The dnsmasq row is what
+    a device on your LAN actually experiences, because dnsmasq answers cache hits before AGH ever sees them.
+  </p>
+
+  <h2>Does it actually block?</h2>
+  <p style="margin-bottom:12px">
+    88 ad, tracker and telemetry hostnames probed through the router, each cross-checked against a control resolver
+    (1.1.1.1) so a dead domain can't masquerade as a block.
+  </p>
+  <div class="stats" style="grid-template-columns: repeat(3, 1fr); margin-top:0">
+    <div class="stat"><div class="k">Ad / tracker hosts</div><div class="v">75 / 88</div><div class="u">answered 0.0.0.0</div></div>
+    <div class="stat"><div class="k">False positives</div><div class="v">0</div><div class="u">44 popular sites, all resolved</div></div>
+    <div class="stat"><div class="k">Latency cost</div><div class="v">−0.1 ms</div><div class="u">blocked 1.4 ms vs cached 1.5 ms p50</div></div>
+  </div>
+  <p style="margin-top:14px">
+    Everything Google ships — DoubleClick, AdSense, AdServices, Analytics, IMA, <code>ads.youtube.com</code> — is blocked,
+    as are the Samsung, LG, Roku and Fire TV metrics endpoints, the mobile SDKs (TikTok, mopub, Unity, App Measurement)
+    and Windows telemetry. Blocked answers are <code>0.0.0.0</code> for A and <code>::</code> for AAAA, including through
+    dnsmasq on <code>:53</code>.
+  </p>
+  <p class="note" style="margin-bottom:6px"><b>What slips through, and why:</b></p>
+  <ul style="font-size:12.5px; margin-bottom:14px">
+    <li><code>mas-ext.amazon.com</code>, <code>aax-eu.amazon.com</code> — Fire TV / Amazon ad endpoints; neither list carries them.</li>
+    <li><code>imasdk.googleapis.com</code> — Google's video ad SDK. Most lists deliberately leave it open because blocking it breaks players.</li>
+    <li><code>graph.facebook.com</code> — Graph API, same host as login. Stays open by design.</li>
+    <li><code>settings-win.data.microsoft.com</code> — one Windows telemetry host is covered, this one isn't.</li>
+    <li><code>rubiconproject.com</code>, <code>mgid.com</code>, <code>inread.com</code>, <code>appsflyer.com</code>, <code>adjust.com</code> — exchanges and attribution SDKs outside both lists.</li>
+    <li><code>spclient.wg.spotify.com</code> — Spotify serves audio and ads from the same host; DNS can't separate them.</li>
+  </ul>
+  <p class="note">
+    The DNS-level limit worth knowing: inline ads (YouTube pre-rolls, Spotify audio, Twitch) come from the same hostnames
+    as the content, so no blocklist removes them. CTV and app SDK traffic is where this actually pays off. Also, a bulk
+    probe script trips the 50 q/s ratelimit and looks exactly like mass blocking failure — any test from one IP has to be
+    paced below 50/s.
+  </p>
+
+  <h2>Did it restart?</h2>
+  <div class="grid2">
+    <div class="panel">
+      <h3>Router</h3>
+      <p><span class="kpi">Rebooted by me: no.</span> I never issued a reboot or touched the GL.iNet watchdog.</p>
+      <p>Uptime at the end was <span class="kpi">18 minutes</span> — it booted at <span class="kpi">15:38:30</span>, a few minutes
+      before my first SSH login, so that boot was not mine either. Worth a glance if you didn't do it yourself.</p>
+      <p>Load never took it down: no OOM kill, no procd respawn, no watchdog event across ~40 minutes of testing.</p>
+    </div>
+    <div class="panel">
+      <h3>AdGuard Home service</h3>
+      <p><span class="kpi">11 process starts.</span> Five were deliberate <code>restart</code>s by me (config changes and the
+      final restore). Six were a crash loop at <span class="kpi">15:46:58–15:47:21</span>: your config uses <code>30d</code> /
+      <code>90d</code> durations and 0.107.73 only parses <code>h</code>, so AGH refused to boot for about 40 seconds.</p>
+      <p>Each clean restart = 8–10 s of DNS pause for the LAN, because dnsmasq forwards to AGH. Total user-visible
+      downtime ≈ 90 s, all of it mine, none of it caused by load.</p>
+    </div>
+  </div>
+
+  <h2>What I had to change to make it boot</h2>
+  <ul>
+    <li><code>bind_hosts: 10.37.0.29</code> → <code>0.0.0.0</code> — that address is your Pi, not this router.</li>
+    <li><code>port: 53</code> → <code>3053</code>, keeping GL.iNet's dnsmasq on <code>:53</code> so the LAN never lost its resolver. The listener is identical, so the numbers hold.</li>
+    <li><code>30d</code> / <code>90d</code> / <code>1d</code> → <code>720h</code> / <code>2160h</code> / <code>24h</code> — this is the one that stopped it from starting.</li>
+    <li><code>safe_fs_patterns</code> → <code>/etc/AdGuardHome/data/userfilters/*</code>.</li>
+  </ul>
+  <p class="note" style="margin-top:8px">
+    Everything else is yours verbatim: DoH upstreams, DNSSEC, 4 MB cache, 300 goroutines, ratelimit 50 per /32, the UI
+    login, all three filter lists. I kept your <code>jarvis</code> rewrite so local names still resolve. Old config saved
+    at <code>/etc/AdGuardHome/config.yaml.pre-stress</code>.
+  </p>
+
+  <h2>Three things I'd change</h2>
+  <ul class="warn">
+    <li><b>Query log is writing every query to flash.</b> <code>file_enabled: true</code> produced a <span class="kpi">161 MB</span>
+    log in ten minutes of load (I deleted it). At a realistic 10 q/s that's ~130 MB/day against 264 MB free, with 90-day
+    retention. Set it to <code>false</code> and keep the in-memory 1000-entry log — that's what the router had.</li>
+    <li><b>The 10 MB filter image is 100% full.</b> HaGeZi Pro (203 414 rules) only fit after I removed the stale AdAway
+    file; the first download died with <code>no space left on device</code>. The next filter update will probably fail
+    the same way.</li>
+    <li><b>Your ratelimit is the first wall any single device hits</b> — 50 q/s per /32, dropped silently. Irrelevant for
+    a household, but if you ever run this test yourself from one machine, 50/s is all you'll see and it will look like a
+    crash.</li>
+  </ul>
+
+  <div class="foot">
+    Load generator: small Go UDP client on 10.37.0.40 (`/tmp/opencode/agh/dnsload`), same L2 as the router, 8 sockets ×
+    up to 256 in-flight, cache-warm A queries across 16 popular domains, 15–20 s per step. Router health sampled once a
+    second from /proc (CPU load, AGH RSS, MemAvailable, UDP buffer errors). Config snapshots and the generator live in
+    <code>/tmp/opencode/agh/</code>.
+  </div>
+
+</div>
+</body>
+</html>
