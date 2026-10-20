@@ -6,6 +6,8 @@ Standalone styled version: [`agh-stress-report.html`](agh-stress-report.html) (d
 
 **Config under test:** `AdGuardHome.yaml` from `raspi_stuff`, applied with four unavoidable adaptations (see [below](#what-had-to-change)). Everything else — DoH upstreams, DNSSEC, 4 MB cache, 300 goroutines, ratelimit 50 per /32, filter lists, UI login — is unchanged.
 
+> **AI-generated report.** All of the work in this repository — setting up the router, running the load tests, probing the blocklists, analysing the results and writing this page — was done by an LLM: **DeepSeek V4.1 Flash Free**, running through the OpenCode harness in T3 Code, on 20 October 2026. The numbers come from the raw runs described under [Method](#method); the narrative, framing and recommendations are machine-written and were not independently reviewed.
+
 Load was generated from `10.37.0.40`, same L2 segment as the router, so no WAN or tailnet in the path.
 
 ## Key numbers
